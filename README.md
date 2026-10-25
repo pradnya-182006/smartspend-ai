@@ -5,7 +5,7 @@
 ![Flask](https://img.shields.io/badge/Flask-3.1.3-000000?style=for-the-badge&logo=flask)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8.0-F7931E?style=for-the-badge&logo=scikitlearn)
-![Pytest](https://img.shields.io/badge/pytest-23%2F23%20Passed-10B981?style=for-the-badge)
+![Pytest](https://img.shields.io/badge/pytest-29%2F29%20Passed-10B981?style=for-the-badge)
 ![License](https://img.shields.io/badge/Academic-Open%20Source-blue?style=for-the-badge)
 
 A full-stack, machine-learning-powered personal finance web application featuring atomic transaction management, dynamic category budget allocation, real-time what-if spending simulation, and an interactive **Machine Learning Model Laboratory (Experiments 1 to 11)** designed for academic demonstrations, project reviews, and viva voce examinations.
@@ -36,7 +36,7 @@ Traditional personal finance trackers provide static summaries of past transacti
 
 The application serves two practical goals:
 1. **For Users:** A high-speed, fintech-styled personal dashboard to track income, log expenses, manage category limits, export data, and forecast over-budget probabilities.
-2. **For Academic Evaluators:** A live laboratory verifying algorithm implementations—ranging from Linear and Polynomial Regression to Support Vector Machines, K-Means, DBSCAN, Random Forest, Gradient Boosting, and Reinforcement Learning (Q-Learning)—with zero synthetic target leakage and transparent metric evaluation.
+2. **For Academic Evaluators:** A live laboratory verifying algorithm implementations—ranging from Linear and Polynomial Regression to Support Vector Machines, K-Means, DBSCAN, Random Forest, Gradient Boosting, and Reinforcement Learning (Q-Learning)—with zero synthetic target leakage, leak-free holdout evaluation, and transparent metric reporting.
 
 ---
 
@@ -45,10 +45,10 @@ The application serves two practical goals:
 - **Fintech Dashboard:** Real-time calculation of Total Income, Total Expenses, Net Savings, and dynamic Budget Utilization with composite **Financial Health Score** (0–100).
 - **Atomic Transactions:** Searchable, filterable transaction table with category pills, date filters, and atomic CSV import/export.
 - **Interactive Budget Planner:** Category progress bars with multi-tiered alert thresholds (Emerald <80%, Amber 80–99%, Red ≥100%) and interactive **What-If Spending Simulator**.
-- **Dual-View 2×2 Confusion Matrix:** Real-time matrix displaying verified test metrics ($TP=50, FP=2, FN=0, TN=20$) with an instant toggle between **Diagnostic (Positive-First)** and **scikit-learn Index (0 / 1)** order.
-- **Dimensionality Reduction:** 2D interactive projections using **Principal Component Analysis (PCA)** ($51.7\%$ explained variance) and **Linear Discriminant Analysis (LDA)** ($95.6\%$ classification accuracy).
-- **Cluster & Anomaly Detection:** 3 spending archetypes discovered by **K-Means** ($k=3$) and 6 irregular spending anomalies flagged by **DBSCAN** density clustering.
-- **Reinforcement Learning Agent:** Discrete 27-state **Q-Learning** Markov Decision Process simulator demonstrating learning convergence across 250 episodes.
+- **Dual-View 2×2 Confusion Matrix:** Real-time matrix displaying verified holdout test metrics ($TP=45, FP=3, FN=3, TN=21$ on $N=72$ stratified test split) with an instant toggle between **Diagnostic (Positive-First)** and **scikit-learn Index (0 / 1)** order.
+- **Dimensionality Reduction:** 2D interactive projections using **Principal Component Analysis (PCA)** ($52.4\%$ explained variance) and **Linear Discriminant Analysis (LDA)** ($93.1\%$ holdout classification accuracy).
+- **Cluster & Anomaly Detection:** 3 spending archetypes discovered by **K-Means** ($k=3$, inertia 1212.9) and 5 irregular spending anomalies flagged by **DBSCAN** density clustering.
+- **Reinforcement Learning Agent:** Discrete 27-state **Q-Learning** Markov Decision Process simulator evaluated on 50 independent test episodes (+172.7 mean reward vs balanced baseline -89.1; 100% budget adherence).
 - **Privacy Controls:** One-click JSON data export and secure cascading database purge.
 
 ---
@@ -69,10 +69,10 @@ The application serves two practical goals:
 
 ### Machine Learning & Data Science
 - **Libraries:** scikit-learn 1.8.0, pandas 2.3.3, NumPy 2.4.1, joblib 1.5.3
-- **Model Serialization:** 16 lightweight pre-trained `.joblib` and `.npy` artifacts (~645 KB total)
+- **Model Serialization:** 18 pre-trained model and transformation artifacts plus 1 metadata file in `data/models/` (~590 KB total)
 
 ### Testing & Tooling
-- **Unit & Integration Tests:** pytest 9.1.1 (23 automated test cases)
+- **Unit & Integration Tests:** pytest 9.1.1 (29 automated test cases)
 
 ---
 
@@ -94,11 +94,11 @@ The application serves two practical goals:
 └──────────────┬──────────────────────────────┬───────────────┘
                │                              │
                ▼ (SQL Queries)                ▼ (Inference)
-┌──────────────────────────────┐ ┌────────────────────────────┐
-│      SQLite 3 Database       │ │    scikit-learn Pipelines  │
-│  users, transactions,        │ │  16 Serialized Model Files │
-│  budgets, alert_preferences  │ │  data/models/*.joblib      │
-└──────────────────────────────┘ └────────────────────────────┘
+┌──────────────────────────────┐ ┌───────────────────────────────────┐
+│      SQLite 3 Database       │ │       scikit-learn Pipelines      │
+│  users, transactions,        │ │  18 Serialized Model/Feature Files│
+│  budgets, alert_preferences  │ │  + 1 Metadata File in data/models │
+└──────────────────────────────┘ └───────────────────────────────────┘
 ```
 
 ---
@@ -117,27 +117,32 @@ The application serves two practical goals:
 
 ## 🧠 Machine Learning Experiments Matrix (Exp 1–11)
 
-All 11 experiments have been audited directly in `backend/ml_pipeline.py`. Hold-out test metrics were evaluated on a 20% test partition ($n = 72$) with zero target leakage:
+All 11 experiments have been audited directly in `backend/ml_pipeline.py`. Preprocessing (scalers, polynomial expansions, PCA) is fitted solely on the training partition ($N = 288$), and all reported metrics are evaluated strictly on an unseen 20% stratified test partition ($N = 72$) with zero target leakage:
 
-| Exp # | Experiment Title | Model / Algorithm | Hold-out Metric ($n=72$) | Serialized Artifact File |
-|:---:|:---|:---|:---|:---|
-| **1** | Feature Engineering | `StandardScaler`, 80/20 Split | Train $\mu=0.00, \sigma=1.00$, zero test leakage | `data/models/scaler_reg.joblib` |
-| **2A** | Dimensionality Reduction | Principal Component Analysis (PCA) | PC1: 33.4%, PC2: 18.3% (Total: 51.7% EVR) | `data/models/pca_model.joblib` |
-| **2B** | Supervised Linear Separation | Linear Discriminant Analysis (LDA) | Hold-out Accuracy: **95.6%** | `data/models/lda_model.joblib` |
-| **3** | Multiple Linear Regression | Ordinary Least Squares (OLS) | $R^2 = \mathbf{0.9916}$, $RMSE = \mathbf{₹814.09}$, $MAE = \mathbf{₹664.01}$ | `data/models/linear_regression.joblib` |
-| **4** | Polynomial Regression | Degree-2 Polynomial Features | $R^2 = \mathbf{0.9908}$, $RMSE = \mathbf{₹853.80}$, $MAE = \mathbf{₹701.36}$ | `data/models/poly_regression.joblib` |
-| **5A** | Ridge Regression | $L_2$ Regularization ($\alpha=1.0$) | $R^2 = \mathbf{0.9916}$, $RMSE = \mathbf{₹815.14}$, $MAE = \mathbf{₹665.04}$ | `data/models/ridge_regression.joblib` |
-| **5B** | Lasso Regression | $L_1$ Regularization ($\alpha=10.0$) | $R^2 = \mathbf{0.9916}$, $RMSE = \mathbf{₹816.77}$, $MAE = \mathbf{₹665.61}$ | `data/models/lasso_regression.joblib` |
-| **6** | Binary Classification | Logistic Regression | Accuracy: **97.2%**, Precision: **96.2%**, Recall: **100%**, F1: **98.0%** | `data/models/logistic_regression.joblib` |
-| **7A** | Support Vector Machine | Linear Kernel SVM ($C=1.0$) | Accuracy: **97.2%**, F1-Score: **98.0%** | `data/models/svm_linear.joblib` |
-| **7B** | Non-Linear SVM | Gaussian RBF Kernel SVM | Accuracy: **93.1%**, F1-Score: **94.9%** | `data/models/svm_rbf.joblib` |
-| **8** | Unsupervised Clustering | K-Means ($k=3$) | Silhouette Score: **0.154**, Inertia: **1522.4** (3 archetypes) | `data/models/kmeans.joblib` |
-| **9** | Density Clustering | DBSCAN ($\text{eps}=1.8, \text{min}=3$) | **6 Outlier Months Detected** (Noise label $-1$) | `data/models/dbscan.joblib` |
-| **10A**| Ensemble (Bagging) | Random Forest Classifier (100 Trees) | Accuracy: **84.7%**, Gini Top Feature: Rent (30.4%) | `data/models/random_forest.joblib` |
-| **10B**| Ensemble (Boosting) | Gradient Boosting Classifier | Accuracy: **87.5%**, Learning Rate: 0.1 | `data/models/gradient_boosting.joblib` |
-| **11** | Reinforcement Learning | Q-Learning (MDP 27-State Simulator) | Final 50-Ep Avg: **+168.6** vs Baseline Heuristic: **-104.7** | `data/models/q_table.npy` |
+| Exp # | Experiment Title | Model / Algorithm | Role in Application | Hold-out Metric ($N=72$) | Serialized Artifact File |
+|:---:|:---|:---|:---|:---|:---|
+| **1** | Feature Engineering | `StandardScaler`, 80/20 Stratified Split | Preprocessing Pipeline | Train $\mu=0.00, \sigma=1.00$, zero test leakage | `data/models/scaler_reg.joblib`<br>`data/models/scaler_clf.joblib`<br>`data/models/scaler_cats.joblib` |
+| **2A** | Dimensionality Reduction | Principal Component Analysis (PCA) | Benchmark (Unsupervised) | PC1: 33.9%, PC2: 18.5% (Total: **52.4% EVR**) | `data/models/pca_model.joblib` |
+| **2B** | Supervised Linear Separation | Linear Discriminant Analysis (LDA) | Benchmark (Supervised) | Hold-out Accuracy: **93.1%** | `data/models/lda_model.joblib` |
+| **3** | Multiple Linear Regression | Ordinary Least Squares (OLS) | **Live Inference Model** | $R^2 = \mathbf{0.9889}$, $RMSE = \mathbf{₹877.49}$, $MAE = \mathbf{₹718.10}$ | `data/models/linear_regression.joblib` |
+| **4** | Polynomial Regression | Degree-2 Polynomial Features | **Live Inference Model** | $R^2 = \mathbf{0.9881}$, $RMSE = \mathbf{₹907.34}$, $MAE = \mathbf{₹755.08}$ | `data/models/poly_regression.joblib`<br>`data/models/poly_features.joblib` |
+| **5A** | Ridge Regression | $L_2$ Regularization ($\alpha=1.0$) | **Live Inference Model** | $R^2 = \mathbf{0.9888}$, $RMSE = \mathbf{₹880.98}$, $MAE = \mathbf{₹722.63}$ | `data/models/ridge_regression.joblib` |
+| **5B** | Lasso Regression | $L_1$ Regularization ($\alpha=5.0$) | Benchmark (Sparsity) | $R^2 = \mathbf{0.9889}$, $RMSE = \mathbf{₹878.80}$, $MAE = \mathbf{₹719.30}$ | `data/models/lasso_regression.joblib` |
+| **6** | Binary Classification | Logistic Regression | **Live Inference Model** | Accuracy: **91.7%**, Precision: **93.8%**, Recall: **93.8%**, F1: **93.8%**, ROC-AUC: **97.7%** | `data/models/logistic_regression.joblib` |
+| **7A** | Support Vector Machine | Linear Kernel SVM ($C=1.0$) | **Live Inference Model** | Accuracy: **93.1%**, F1-Score: **94.8%** | `data/models/svm_linear.joblib` |
+| **7B** | Non-Linear SVM | Gaussian RBF Kernel SVM | Benchmark (Nonlinear Boundary) | Accuracy: **88.9%**, F1-Score: **91.5%** | `data/models/svm_rbf.joblib` |
+| **8** | Unsupervised Clustering | K-Means ($k=3$) | Benchmark (Spending Personas) | Silhouette Score: **0.155**, Inertia: **1212.9** (3 archetypes) | `data/models/kmeans.joblib` |
+| **9** | Density Clustering | DBSCAN ($\text{eps}=1.8, \text{min}=3$) | Benchmark (Anomaly Detection) | **5 Outlier Records Detected** (Noise label $-1$) | `data/models/dbscan.joblib` |
+| **10A**| Ensemble (Bagging) | Random Forest Classifier (100 Trees) | Benchmark (Feature Importance) | Accuracy: **84.7%**, Gini Top Features: Income (24.2%), Rent (24.1%), Food (22.5%) | `data/models/random_forest.joblib` |
+| **10B**| Ensemble (Boosting) | Gradient Boosting Classifier | Benchmark (Boosting Comparison) | Accuracy: **84.7%**, Learning Rate: 0.1 | `data/models/gradient_boosting.joblib` |
+| **11** | Reinforcement Learning | Q-Learning (MDP 27-State Simulator) | Benchmark (Policy Simulation) | Independent Test 50-Ep Avg: **+172.7** (std 25.2) vs Baseline Heuristic: **-89.1** (std 36.4), Adherence: **100%** | `data/models/q_table.npy` |
 
-*Verified Confusion Matrix Counts:* $TP = 50$, $FP = 2$, $FN = 0$, $TN = 20$.
+### Model Catalogue & Role Distinction
+- **Live Online Inference Models (5 Models):** Directly wired to the production `/api/ml/predict` endpoint to compute real-time continuous expense estimates (Linear, Polynomial, Ridge) and over-budget risk classifications (Logistic Regression, Linear SVM).
+- **Analytical Evaluation Benchmarks (9 Models):** Used for comparative analysis, feature importance auditing, persona segmentation, outlier anomaly detection, and discrete dynamic policy benchmarking in the interactive ML Model Laboratory.
+
+*Verified Confusion Matrix Counts (Stratified Test Split, $N=72$):* $TP = 45$, $FP = 3$, $FN = 3$, $TN = 21$.
+
 
 ---
 
@@ -158,7 +163,7 @@ cd "Smart spend Ai/smart spend ai"
 For convenience on Windows, pre-configured launcher scripts are provided:
 - **`start_backend.bat`**: Verifies Python, checks port availability, and starts Flask on `http://127.0.0.1:5000`.
 - **`start_frontend.bat`**: Verifies npm, installs `node_modules` if missing, and starts Vite on `http://localhost:5173`.
-- **`run_tests.bat`**: Runs all 23 automated pytest tests.
+- **`run_tests.bat`**: Runs all 29 automated pytest tests.
 - **`reset_demo_data.bat`**: Safely resets fictional demo records for User ID 1 (`demo_user`).
 
 ### 4. Manual Terminal Startup
@@ -233,7 +238,7 @@ npm run dev
 
 ### 3. Model Metadata & Evaluation Results
 - **`GET /api/ml/metadata`**
-  - Returns complete hold-out metrics for all 11 experiments, confusion matrix counts, PCA variance ratios, and training timestamps.
+  - Returns complete hold-out metrics for all 11 experiments, confusion matrix counts, PCA variance ratios, training timestamps, and the model catalogue.
 
 ### 4. Controlled Retraining
 - **`POST /api/ml/retrain`**
@@ -247,10 +252,13 @@ npm run dev
 ```powershell
 python -m pytest tests -v
 ```
-**Test Suite Coverage (23 Passed, 0 Failed):**
+**Test Suite Coverage (29 Passed, 0 Failed):**
 - Budget calculation and what-if simulation tests (`test_budgets.py`)
 - Zero-income and missing-budget mathematical edge cases (`test_calculations.py`)
-- Full ML pipeline serialization, metric consistency, target leakage checks, and Q-learning convergence (`test_ml_models.py`)
+- Full ML pipeline serialization, holdout metrics, zero target leakage, and Q-learning convergence (`test_ml_models.py`)
+- Model artifact completeness verification (`verify_model_artifacts`) and prediction input schema/bounds validation (`test_ml_models.py`)
+- Q-learning isolated RNG reproducibility and convergence diagnostic checks (`test_ml_models.py`)
+- Model catalogue transparency tests distinguishing live prediction models from benchmarks (`test_ml_models.py`)
 - Authentication, session invalidation, privacy export, and ML input bounds validation (`test_security_privacy.py`)
 - Transaction CRUD, filter matching, and CSV import/export integrity (`test_transactions.py`)
 
@@ -258,22 +266,22 @@ python -m pytest tests -v
 ```powershell
 npm run build
 ```
-Generates minified static assets in `dist/` with 0 build errors in ~2.5 seconds.
+Generates minified static assets in `dist/` with 0 build errors.
 
 ---
 
 ## 📦 Model Training & Serialization
 
-The project ships with 16 pre-trained, lightweight model artifacts in `data/models/` (~645 KB total). To regenerate all artifacts from scratch at any time:
+The project ships with 18 pre-trained, lightweight model and feature transformation artifacts plus 1 metadata file in `data/models/` (~590 KB total). To regenerate all artifacts from scratch at any time:
 
 ```powershell
 python -m backend.ml_pipeline
 ```
 This script:
 1. Loads the synthetic benchmark dataset (`data/expenses_dataset.csv`).
-2. Scales features using an 80/20 train/test split (zero data leakage).
-3. Fits and evaluates all 11 experiments.
-4. Serializes all fitted estimators to `data/models/` using `joblib` and NumPy `.npy`.
+2. Scales features using an 80/20 stratified train/test split on training data only (zero data leakage).
+3. Fits and evaluates all 11 experiments on held-out test splits.
+4. Serializes all fitted estimators and scalers to `data/models/` using `joblib` and NumPy `.npy`.
 
 ---
 
@@ -294,8 +302,10 @@ This script:
 ## ⚠️ Dataset & Demo Limitations
 
 1. **Synthetic Dataset:** All models are trained on a synthetic dataset of 360 monthly financial profiles (`data/expenses_dataset.csv`). While statistically calibrated to reflect realistic urban household spending distributions, they are **not** real customer banking records.
-2. **Simulated RL Environment:** Experiment 11 (Q-Learning) operates inside an educational 27-state discrete Markov Decision Process simulator (`SimulatedBudgetEnv`) with simulated price shocks. It does **not** execute actual automated banking transactions.
-3. **Statistical Estimates:** Predictions generated by the models are algorithmic estimates for educational budgeting and scenario analysis, not financial guarantees.
+2. **Target Definition & Limits of Cross-Sectional Estimation:** `TotalExpenses` is calculated directly as the sum of observed expense categories (`Rent + Food + Utilities + Shopping + Travel + Health`) plus an unobserved incidental cash expense (`Miscellaneous ~ N(2500, 800)`). Because the input features and target represent concurrent allocations within the same accounting month, the high $R^2 \approx 0.9889$ establishes **concurrent cross-sectional spending reconstruction and reconciliation**, **not** longitudinal multi-period future time-series forecasting. Future-period forecasting would require sequential longitudinal panel data across consecutive months.
+3. **Simulated RL Environment:** Experiment 11 (Q-Learning) operates inside an educational discrete 27-state Markov Decision Process simulator (`SimulatedBudgetEnv`) with simulated price shocks to benchmark dynamic resource throttling actions (Conservative, Balanced, Aggressive). It does **not** establish evidence of actual customer savings or execute live banking transactions.
+4. **Statistical Estimates:** Predictions generated by the models are algorithmic estimates for educational budgeting and scenario analysis, not financial guarantees.
+
 
 ---
 
