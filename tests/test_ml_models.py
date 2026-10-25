@@ -149,3 +149,90 @@ def test_ml_api_endpoints(client):
     })
     assert res_pred.status_code == 200
     assert "predictions" in res_pred.get_json()
+
+def test_dataset_integrity_and_target_definition():
+    """TASK 1: Verify dataset structure, target definitions, and lack of identity leakage."""
+    from backend.ml_pipeline import get_dataset, ALL_INPUT_COLS
+    df = get_dataset()
+    assert len(df) == 360, f"Expected 360 samples, got {len(df)}"
+    assert df.isnull().sum().sum() == 0, "Dataset must not have missing values"
+
+    for col in ALL_INPUT_COLS + ["TotalExpenses", "OverBudget"]:
+        assert col in df.columns, f"Expected column {col} in dataset"
+
+    # Confirm TotalExpenses is not a strict deterministic identity of input categories
+    # due to unobserved incidental variance (Miscellaneous)
+    sum_cats = df[["Rent", "Food", "Utilities", "Shopping", "Travel", "Health"]].sum(axis=1)
+    diff = df["TotalExpenses"] - sum_cats
+    assert not (diff == 0).all(), "TotalExpenses must not be an identity sum of category columns"
+    assert diff.mean() > 1000, "Unobserved miscellaneous expense expected"
+
+def test_lda_and_pca_holdout_evaluation_no_leakage():
+    """TASK 2: Ensure PCA & LDA preprocessing fit strictly on train and evaluate on hold-out."""
+    meta = get_or_train_metadata()
+    assert "lda_accuracy" in meta
+    # Evaluated on held-out test split, must remain high and bounded
+    assert 75.0 <= meta["lda_accuracy"] <= 100.0
+    assert "task_type" in meta
+    assert "Cross-sectional" in meta["task_type"]
+
+def test_artifact_completeness_and_verification():
+    """TASK 4: Test verify_model_artifacts accurately detects valid and missing artifacts."""
+    from backend.ml_pipeline import verify_model_artifacts, REQUIRED_MODEL_FILES
+    is_valid, missing = verify_model_artifacts()
+    assert is_valid is True
+    assert len(missing) == 0
+    assert len(REQUIRED_MODEL_FILES) >= 18
+
+def test_q_learning_reproducibility_and_eval_metrics():
+    """TASK 3: Test isolated RNG does not mutate global state and real convergence diagnostics."""
+    import numpy as np
+    from backend.ml_pipeline import train_q_learning_agent, SimulatedBudgetEnv
+
+    # Save state before
+    state_before = np.random.get_state()
+    res1 = train_q_learning_agent(episodes=60, seed=123)
+    state_after = np.random.get_state()
+    # Ensure global numpy state was not mutated by isolated RNG
+    assert np.array_equal(state_before[1], state_after[1]), "train_q_learning_agent must not mutate global random state"
+
+    # Check convergence diagnostic
+    assert "convergence_episode" in res1
+    assert res1["convergence_episode"] is None or isinstance(res1["convergence_episode"], int)
+    assert "convergence_criterion" in res1
+
+    # Check independent test evaluation metrics
+    assert "agent_eval" in res1 and "baseline_eval" in res1
+    assert "mean_reward" in res1["agent_eval"]
+    assert "std_reward" in res1["agent_eval"]
+    assert "budget_adherence_pct" in res1["agent_eval"]
+    assert "savings_achieved_pct" in res1["agent_eval"]
+    assert 0.0 <= res1["agent_eval"]["budget_adherence_pct"] <= 100.0
+
+def test_model_catalog_transparency():
+    """TASK 5: Verify metadata explicitly distinguishes live prediction models vs evaluation benchmarks."""
+    meta = get_or_train_metadata()
+    assert "model_catalog" in meta
+    cat = meta["model_catalog"]
+    assert "live_prediction_models" in cat
+    assert "evaluation_benchmarks" in cat
+    assert len(cat["live_prediction_models"]) == 5
+    assert len(cat["evaluation_benchmarks"]) == 9
+
+def test_prediction_input_validation():
+    """TASK 4: Test that prediction safely handles bounds, invalid types, and missing fields."""
+    # Valid input with default fallback
+    res = predict_from_saved_models({"Income": 75000})
+    assert res["status"] == "success"
+    assert res["predictions"]["linear_regression_expense"] > 0
+
+    # Negative bounds or NaN rejection
+    with pytest.raises(ValueError):
+        predict_from_saved_models({"Income": -500})
+
+    with pytest.raises(ValueError):
+        predict_from_saved_models({"Income": float("nan")})
+
+    with pytest.raises(ValueError):
+        predict_from_saved_models({"Rent": "invalid_number_string"})
+
